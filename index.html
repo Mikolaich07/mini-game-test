@@ -1,0 +1,590 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0a0c0b">
+<title>Deadlock Arcade</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://assets-bucket.deadlock-api.com">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;700;800&family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="data.js"></script>
+<style>
+:root{
+  --bg:#0a0c0b; --card:#181716; --card2:#1f1e1c; --line:#282724; --line2:#3a3834;
+  --text:#e3dcce; --text2:#f0ebe0; --muted:#b0a99b; --dim:#817a6e;
+  --accent:#ff5a1f; --mint:#5ef0ae; --bad:#ff4d4d;
+  --w:#f08a3c; --v:#7ccf5a; --s:#b07af0;
+  --safe-top:calc(var(--tg-safe-area-inset-top,0px) + var(--tg-content-safe-area-inset-top,0px));
+  --safe-bot:max(env(safe-area-inset-bottom,0px), var(--tg-safe-area-inset-bottom,0px));
+  --vh:var(--tg-viewport-stable-height,100dvh);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font:16px/1.4 Rubik,system-ui,sans-serif;overscroll-behavior:none}
+body{
+  background-color:var(--bg);
+  background-image:
+    repeating-linear-gradient(32deg,transparent 0 22px,rgba(196,217,205,.02) 22px 23px),
+    radial-gradient(900px 500px at 85% -10%,rgba(255,90,31,.12),transparent 70%),
+    radial-gradient(700px 400px at -10% 30%,rgba(94,240,174,.05),transparent 70%);
+  background-attachment:fixed;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;
+}
+img{display:block;-webkit-user-drag:none}
+button{font:inherit;color:inherit}
+#app{max-width:560px;margin:0 auto;min-height:var(--vh);display:flex;flex-direction:column;
+  padding:calc(var(--safe-top) + 10px) 16px calc(var(--safe-bot) + 16px)}
+
+/* ---------- top bar ---------- */
+.bar{display:flex;align-items:center;gap:10px;height:48px;margin-bottom:6px}
+.logo{width:36px;height:36px;background:var(--accent);color:#181716;font:800 20px Unbounded;display:flex;align-items:center;justify-content:center;flex:none}
+.bar .ttl{font:700 13px Unbounded;letter-spacing:.02em;color:var(--text2);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.seg{display:flex;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:3px;flex:none}
+.seg button{border:0;background:none;padding:6px 11px;border-radius:999px;font:600 12px Rubik;color:var(--muted);cursor:pointer;min-height:30px}
+.seg button.on{background:var(--accent);color:#181716}
+.back{border:0;background:var(--card);border:1px solid var(--line);width:40px;height:40px;border-radius:10px;font-size:20px;color:var(--text);cursor:pointer;flex:none;display:flex;align-items:center;justify-content:center}
+.chip{background:var(--card);border:1px solid var(--line);border-radius:999px;padding:6px 12px;font:600 13px Rubik;color:var(--text2);white-space:nowrap;flex:none}
+.chip b{color:var(--accent)}
+
+/* ---------- typography ---------- */
+.kicker{display:inline-flex;align-items:center;gap:8px;font:600 12px Rubik;color:var(--muted);border:1px solid var(--line);background:rgba(24,23,22,.7);padding:6px 12px;border-radius:999px}
+.kicker i{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px var(--accent)}
+h1{font:800 clamp(28px,8.4vw,38px)/1.08 Unbounded;letter-spacing:-.03em;margin:14px 0 10px;color:var(--text2)}
+h1 em{font-style:normal;color:var(--accent)}
+h2{font:800 22px/1.15 Unbounded;letter-spacing:-.02em;margin:4px 0 4px;color:var(--text2)}
+.lead{color:var(--muted);margin:0 0 18px;font-size:15px}
+.label{font:600 11px Rubik;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+
+/* ---------- buttons ---------- */
+.btn{position:relative;display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:54px;border:0;cursor:pointer;
+  background:var(--accent);color:#181716;font:700 15px Rubik;letter-spacing:.04em;text-transform:uppercase;transform:skewX(-10deg);transition:transform .1s, filter .1s}
+.btn>span{transform:skewX(10deg);display:flex;align-items:center;gap:8px}
+.btn:active{transform:skewX(-10deg) scale(.97);filter:brightness(1.1)}
+.btn.ghost{background:transparent;color:var(--text);box-shadow:inset 0 0 0 1px var(--line2)}
+.btn.mint{background:var(--mint)}
+.btn:disabled{opacity:.35;pointer-events:none}
+.btn+.btn{margin-top:10px}
+.row{display:flex;gap:10px}.row>*{flex:1;min-width:0}
+.row .btn+.btn{margin-top:0}
+
+/* ---------- home ---------- */
+.games{display:grid;gap:10px}
+.game{display:flex;align-items:center;gap:14px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;cursor:pointer;position:relative;overflow:hidden;min-height:84px;text-align:left;width:100%}
+.game:active{background:var(--card2)}
+.game .art{width:60px;height:60px;flex:none;border-radius:10px;background:#111 center/cover;position:relative;overflow:hidden;border:1px solid var(--line2)}
+.game .art img{width:100%;height:100%;object-fit:cover}
+.game .tx{flex:1;min-width:0}
+.game .tx b{display:block;font:700 15px Unbounded;letter-spacing:-.01em;color:var(--text2)}
+.game .tx span{display:block;color:var(--muted);font-size:13px;margin-top:3px}
+.game .rec{font:600 11px Rubik;color:var(--mint);margin-top:5px}
+.game .go{color:var(--accent);font-size:22px;flex:none}
+.game.off{opacity:.55}
+.foot{margin-top:auto;padding-top:20px;text-align:center;color:var(--dim);font-size:11.5px;line-height:1.5}
+
+/* ---------- shared game ---------- */
+.screen{display:flex;flex-direction:column;flex:1;min-height:0}
+.dock{margin-top:auto;padding-top:14px}
+.stat{text-align:center;margin:4px 0 12px}
+.stat .label{display:block;margin-bottom:4px}
+.stat b{font:800 18px/1.2 Unbounded;color:var(--text2);letter-spacing:-.01em}
+.timer{height:5px;background:var(--line);overflow:hidden;margin:2px 0 14px;transform:skewX(-20deg)}
+.timer>div{height:100%;background:var(--accent);width:100%;transition:width .1s linear}
+.timer.low>div{background:var(--bad)}
+
+/* hero card */
+.hc{position:relative;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;cursor:pointer;transition:border-color .15s, transform .1s}
+.hc:active{transform:scale(.98)}
+.hc .pic{aspect-ratio:280/330;background:#121110;position:relative;overflow:hidden}
+.hc .pic img{width:100%;height:100%;object-fit:cover;object-position:top center}
+.hc .pic::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 55%,rgba(10,12,11,.95))}
+.hc .nm{position:absolute;left:0;right:0;bottom:0;padding:8px 10px 10px;z-index:1}
+.hc .nm b{display:block;font:700 14px/1.15 Unbounded;color:var(--text2);letter-spacing:-.01em}
+.hc .nm small{display:block;color:var(--muted);font-size:11.5px;margin-top:2px}
+.hc .vl{position:absolute;top:8px;left:8px;right:8px;z-index:1;display:flex;justify-content:center}
+.hc .vl span{background:rgba(10,12,11,.85);border:1px solid var(--line2);padding:6px 10px;font:800 17px Unbounded;color:var(--text2);border-radius:8px;backdrop-filter:blur(4px)}
+.hc .vl span.q{color:var(--accent)}
+.hc.ok{border-color:var(--mint);box-shadow:0 0 0 2px var(--mint) inset}
+.hc.bad{border-color:var(--bad);box-shadow:0 0 0 2px var(--bad) inset}
+.hc.ok .vl span{border-color:var(--mint);color:var(--mint)}
+.hc.bad .vl span{border-color:var(--bad);color:var(--bad)}
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:10px;position:relative}
+.duo .vs{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%) skewX(-10deg);background:var(--accent);color:#181716;font:800 13px Unbounded;padding:7px 9px;z-index:2}
+.quad{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.quad .hc .pic{aspect-ratio:280/250}
+
+/* ability quiz */
+.abil{display:flex;flex-direction:column;align-items:center;text-align:center;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 14px;margin-bottom:12px}
+.abil .ic{width:96px;height:96px;border-radius:50%;background:radial-gradient(circle at 50% 35%,#2b2a27,#111);border:2px solid var(--accent);display:flex;align-items:center;justify-content:center;box-shadow:0 0 30px rgba(255,90,31,.18)}
+.abil .ic img{width:64px;height:64px;object-fit:contain;filter:drop-shadow(0 2px 6px rgba(0,0,0,.6))}
+.abil b{font:800 20px/1.2 Unbounded;color:var(--text2);margin-top:12px;letter-spacing:-.01em}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.op{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px;min-height:64px;cursor:pointer;text-align:left;width:100%}
+.op:active{background:var(--card2)}
+.op img,.op .ph{width:46px;height:46px;border-radius:8px;object-fit:cover;flex:none;background:#121110}
+.op b{font:600 14px/1.2 Rubik;color:var(--text2)}
+.op small{display:block;color:var(--muted);font-size:11.5px;font-weight:400}
+.op.ok{border-color:var(--mint);box-shadow:0 0 0 1px var(--mint) inset}
+.op.bad{border-color:var(--bad);box-shadow:0 0 0 1px var(--bad) inset}
+.lives{color:var(--accent);letter-spacing:2px}
+
+/* connections */
+.cg{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.ct{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:6px 3px 6px;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;transition:transform .08s,background .1s;min-width:0}
+.ct:active{transform:scale(.95)}
+.ct img,.ct .ph{width:100%;aspect-ratio:1;border-radius:7px;object-fit:cover;background:#121110}
+.ct span{font:600 10.5px/1.15 Rubik;color:var(--text);text-align:center;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ct.sel{background:#3a1d10;border-color:var(--accent)}
+.ct.sel span{color:var(--text2)}
+.solved{border-radius:10px;padding:10px 12px;margin-bottom:6px;color:#111}
+.solved b{display:block;font:700 12.5px/1.25 Unbounded;letter-spacing:-.01em}
+.solved .fc{display:flex;gap:6px;margin-top:7px}
+.solved .fc div{flex:1;min-width:0;text-align:center}
+.solved .fc img{width:100%;aspect-ratio:1;border-radius:6px;object-fit:cover;background:rgba(0,0,0,.25)}
+.solved .fc span{display:block;font:600 10px Rubik;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dots{display:flex;gap:8px;justify-content:center;align-items:center;margin:12px 0 0;color:var(--muted);font-size:12px}
+.dots i{width:11px;height:11px;background:var(--accent);transform:skewX(-15deg)}
+.dots i.off{background:var(--line2)}
+
+/* items */
+.sticky{position:sticky;top:calc(var(--safe-top) + 4px);z-index:5;background:linear-gradient(var(--bg) 85%,transparent);padding:6px 0 10px;margin:0 -2px}
+.inp{width:100%;background:var(--card);border:1px solid var(--line2);color:var(--text2);font:500 16px Rubik;padding:14px 14px;border-radius:12px;outline:none;-webkit-user-select:text;user-select:text}
+.inp:focus{border-color:var(--accent)}
+.flash{animation:fl .35s}
+@keyframes fl{0%{border-color:var(--mint);box-shadow:0 0 0 3px rgba(94,240,174,.25)}100%{}}
+.cats{display:flex;gap:6px;margin-top:8px}
+.cats div{flex:1;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 8px;font:600 12px Rubik;display:flex;justify-content:space-between}
+.cats .w{color:var(--w)}.cats .v{color:var(--v)}.cats .s{color:var(--s)}
+.ig{display:grid;grid-template-columns:repeat(auto-fill,minmax(52px,1fr));gap:6px;margin-top:6px}
+.it{aspect-ratio:1;border-radius:9px;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);position:relative;background:var(--card)}
+.it img{width:72%;height:72%;object-fit:contain}
+.it.w{background:linear-gradient(160deg,#3b2414,#1c1410);border-color:#5a3418}
+.it.v{background:linear-gradient(160deg,#1f3317,#121a0f);border-color:#2f4f22}
+.it.s{background:linear-gradient(160deg,#2c1e3f,#15101e);border-color:#46305f}
+.it.miss{opacity:.28;filter:grayscale(1)}
+.it.new{animation:pop .4s}
+@keyframes pop{0%{transform:scale(.4)}70%{transform:scale(1.12)}100%{transform:scale(1)}}
+.secttl{margin:14px 0 4px}
+.lastfound{min-height:20px;color:var(--mint);font-size:13px;margin-top:6px;text-align:center}
+
+/* result */
+.result{text-align:center;padding:20px 0 6px}
+.big{font:800 64px/1 Unbounded;color:var(--accent);letter-spacing:-.04em}
+.result p{color:var(--muted);margin:8px 0 0}
+.badge{display:inline-block;background:var(--mint);color:#111;font:700 12px Rubik;padding:5px 10px;margin-top:10px;transform:skewX(-10deg)}
+.lb{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:8px}
+.lb .art{width:44px;height:44px;border-radius:8px;overflow:hidden;flex:none;background:#111}
+.lb .art img{width:100%;height:100%;object-fit:cover}
+.lb span{flex:1;font-weight:600;color:var(--text2)}
+.lb b{font:800 18px Unbounded;color:var(--accent)}
+.lb small{color:var(--dim);font-size:11px;display:block;text-align:right}
+
+.toast{position:fixed;left:50%;bottom:calc(var(--safe-bot) + 90px);transform:translateX(-50%) translateY(10px);background:var(--card2);border:1px solid var(--accent);color:var(--text2);padding:10px 16px;border-radius:10px;font:600 14px Rubik;z-index:20;opacity:0;transition:.2s;pointer-events:none;white-space:nowrap}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.shake{animation:sh .35s}
+@keyframes sh{20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+.ph{display:flex;align-items:center;justify-content:center;color:var(--dim);font:700 14px Unbounded}
+.pic .ph,.art .ph{width:100%;height:100%;font-size:22px}
+.center{text-align:center}.muted{color:var(--muted)}
+@media (min-width:480px){ .ct span{font-size:12px} .hc .nm b{font-size:16px} }
+@media (prefers-reduced-motion:reduce){ *{animation:none!important;transition:none!important} }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="toast" id="toast"></div>
+<script>
+/* ============ CONFIG ============ */
+// Посилання на міні-апп після створення в @BotFather (для «Поділитися»):
+const BOT_LINK = 'https://t.me/YOUR_BOT/arcade';
+const API = 'https://api.deadlock-api.com';
+const IMG = 'https://assets-bucket.deadlock-api.com/assets-api-res/images/';
+
+/* ============ TELEGRAM ============ */
+const tg = (window.Telegram && Telegram.WebApp && Telegram.WebApp.platform && Telegram.WebApp.platform !== 'unknown') ? Telegram.WebApp : null;
+const call = (fn, ...a) => { try { tg && typeof tg[fn] === 'function' && tg[fn](...a); } catch(e){} };
+if (tg) {
+  call('ready'); call('expand');
+  call('setHeaderColor', '#0a0c0b'); call('setBackgroundColor', '#0a0c0b'); call('setBottomBarColor', '#0a0c0b');
+  tg.BackButton && tg.BackButton.onClick(() => go('home'));
+}
+const haptic = t => { try { const h = tg && tg.HapticFeedback; if (!h) return;
+  if (t === 'ok' || t === 'bad') h.notificationOccurred(t === 'ok' ? 'success' : 'error');
+  else if (t === 'sel') h.selectionChanged(); else h.impactOccurred(t || 'light'); } catch(e){} };
+const tgUser = tg && tg.initDataUnsafe && tg.initDataUnsafe.user;
+
+/* ============ STORAGE ============ */
+const store = {
+  get(k){ try { const v = localStorage.getItem('dla_'+k); return v == null ? null : JSON.parse(v); } catch(e){ return null; } },
+  set(k,v){ const s = JSON.stringify(v);
+    try { localStorage.setItem('dla_'+k, s); } catch(e){}
+    try { tg && tg.CloudStorage && tg.CloudStorage.setItem('dla_'+k, s); } catch(e){} }
+};
+function syncCloud(){ return new Promise(res => {
+  if (!tg || !tg.CloudStorage || !tg.isVersionAtLeast || !tg.isVersionAtLeast('6.9')) return res();
+  try { tg.CloudStorage.getKeys((err, keys) => {
+    const ks = (keys || []).filter(k => k.startsWith('dla_')); if (err || !ks.length) return res();
+    tg.CloudStorage.getItems(ks, (e, vals) => { if (!e && vals) for (const k in vals) try { localStorage.setItem(k, vals[k]); } catch(_){} res(); });
+  }); } catch(e){ res(); }
+  setTimeout(res, 1500);
+}); }
+const best = g => store.get('best_'+g) || 0;
+const saveBest = (g, s) => { if (s > best(g)) { store.set('best_'+g, s); return true; } return false; };
+let LANG = store.get('lang') || 'en';
+
+/* ============ DATA ============ */
+const D = window.DL_DATA || {h:[], i:[]};
+const HEROES = D.h.map(([id,n,u,c,s,a,g,t,x]) => ({ id, en:n, uk:u||n, card:IMG+c, sm:IMG+s,
+  ab:a.map(([an,ai]) => ({n:an, img:IMG+ai})), gun:g, type:t, cx:x }));
+const HBY = Object.fromEntries(HEROES.map(h => [h.id, h]));
+const ITEMS = D.i.filter(i => i[2] <= 4).map(([n,c,t,img]) => ({n, c, t, img:IMG+img, k:norm(n)}));
+let STATS = [], statsState = 'loading';
+
+const STAT_DEFS = [
+  {k:'win',  n:'Вінрейт',                 f:v=>v.toFixed(1)+'%'},
+  {k:'pick', n:'Пікрейт',                 f:v=>v.toFixed(1)+'%'},
+  {k:'kda',  n:'KDA',                     f:v=>v.toFixed(2)},
+  {k:'kills',n:'Кіли за матч',            f:v=>v.toFixed(1)},
+  {k:'deaths',n:'Смерті за матч',         f:v=>v.toFixed(1)},
+  {k:'dmg',  n:'Шкода по героях за матч', f:v=>fmtK(v)},
+  {k:'souls',n:'Душі за матч',            f:v=>fmtK(v)},
+  {k:'acc',  n:'Точність стрільби',       f:v=>v.toFixed(1)+'%'},
+  {k:'lh',   n:'Ласт-хіти за матч',       f:v=>v.toFixed(0)},
+  {k:'boss', n:'Шкода по об’єктах',       f:v=>fmtK(v)},
+];
+function fmtK(v){ return v >= 1000 ? (v/1000).toFixed(v >= 10000 ? 1 : 2).replace(/\.?0+$/,'') + 'k' : Math.round(v)+''; }
+
+async function loadStats(){
+  const get = async u => { const c = new AbortController(); const t = setTimeout(()=>c.abort(), 9000);
+    try { const r = await fetch(u, {signal:c.signal}); if (!r.ok) throw 0; return await r.json(); } finally { clearTimeout(t); } };
+  const cached = store.get('stats_cache');
+  if (cached && Date.now() - cached.t < 6*3600e3) { STATS = cached.d; statsState = 'ok'; return; }
+  try {
+    const since = Math.floor(Date.now()/1000) - 30*86400;
+    let raw; try { raw = await get(API+'/v1/analytics/hero-stats?min_unix_timestamp='+since); } catch(e){ raw = await get(API+'/v1/analytics/hero-stats'); }
+    const total = raw.reduce((s,r)=>s+r.matches,0) / 12;
+    STATS = raw.filter(r => HBY[r.hero_id] && r.matches > 300).map(r => { const m = r.matches;
+      return { id:r.hero_id, win:r.wins/m*100, pick:m/total*100,
+        kda:(r.total_kills+r.total_assists)/Math.max(1,r.total_deaths), kills:r.total_kills/m, deaths:r.total_deaths/m,
+        dmg:r.total_player_damage/m, souls:r.total_net_worth/m,
+        acc:r.total_shots_hit/Math.max(1,r.total_shots_hit+r.total_shots_missed)*100,
+        lh:r.total_last_hits/m, boss:r.total_boss_damage/m }; });
+    statsState = STATS.length >= 8 ? 'ok' : 'fail';
+    if (statsState === 'ok') store.set('stats_cache', {t:Date.now(), d:STATS});
+  } catch(e){
+    if (cached) { STATS = cached.d; statsState = 'ok'; } else statsState = 'fail';
+  }
+}
+
+/* ============ HELPERS ============ */
+const $app = document.getElementById('app');
+const rnd = n => Math.floor(Math.random()*n);
+const pick = a => a[rnd(a.length)];
+const shuffle = a => { a = [...a]; for (let i = a.length-1; i > 0; i--) { const j = rnd(i+1); [a[i],a[j]] = [a[j],a[i]]; } return a; };
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function norm(s){ return s.toLowerCase().replace(/[’'`]/g,'').replace(/[^a-z0-9а-яіїєґ]/gi,''); }
+const nm = h => LANG === 'uk' ? h.uk : h.en;
+const sub = h => LANG === 'uk' ? h.en : h.uk;
+const ini = n => n.split(/[\s&]+/).filter(Boolean).map(w=>w[0]).join('').slice(0,2);
+const img = (src, alt, cls) => `<img src="${esc(src)}" alt="${esc(alt)}" ${cls?`class="${cls}"`:''} loading="lazy" decoding="async" onerror="this.outerHTML='<div class=&quot;ph ${cls||''}&quot;>${esc(ini(alt))}</div>'">`;
+const preload = urls => urls.forEach(u => { const i = new Image(); i.src = u; });
+let toastT; function toast(m){ const t = document.getElementById('toast'); t.textContent = m; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(()=>t.classList.remove('on'), 1700); }
+let timers = []; const later = (f, ms) => timers.push(setTimeout(f, ms)); const every = (f, ms) => timers.push(setInterval(f, ms));
+const clearTimers = () => { timers.forEach(t => { clearTimeout(t); clearInterval(t); }); timers = []; };
+function share(text){
+  const url = 'https://t.me/share/url?url='+encodeURIComponent(BOT_LINK)+'&text='+encodeURIComponent(text);
+  if (tg && tg.openTelegramLink) tg.openTelegramLink(url); else window.open(url, '_blank');
+}
+function bar(title, right){
+  return `<div class="bar">${tg ? '' : `<button class="back" onclick="go('home')" aria-label="Назад">‹</button>`}
+    <div class="ttl">${title}</div>${right ? `<div class="chip" id="chip">${right}</div>` : ''}</div>`;
+}
+const setChip = h => { const c = document.getElementById('chip'); if (c) c.innerHTML = h; };
+
+/* ============ ROUTER ============ */
+const GAMES = [
+  {id:'hl',    t:'Вище чи нижче',  d:'У кого стат більший? Тримай серію.',        stats:true, art:()=>HBY[2]&&HBY[2].card,  unit:'серія'},
+  {id:'blitz', t:'Stat Blitz',     d:'10 раундів по 5 секунд. Без вагань.',       stats:true, art:()=>HBY[13]&&HBY[13].card, unit:'очок'},
+  {id:'abil',  t:'Чия здібність?', d:'Іконка й назва — вгадай героя. 3 життя.',               art:()=>HBY[52]&&HBY[52].ab[3].img, unit:'відповідей'},
+  {id:'conn',  t:'Connections',    d:'16 героїв, 4 приховані групи по 4.',                    art:()=>HBY[31]&&HBY[31].card, unit:'перемог'},
+  {id:'items', t:'Item Speedrun',  d:'Назви всі предмети магазину за 5 хвилин.',              art:()=>IMG+'items/spirit/echo_shard.webp', unit:'предметів'},
+];
+const SCREENS = {home:renderHome, hl:startHL, blitz:startBlitz, abil:startAbil, conn:startConn, items:startItems, lb:renderLB};
+let current = 'home';
+function go(s){
+  clearTimers(); current = s; window.scrollTo(0,0);
+  if (tg){ tg.BackButton && (s === 'home' ? tg.BackButton.hide() : tg.BackButton.show());
+    s === 'home' ? call('enableVerticalSwipes') : call('disableVerticalSwipes');
+    s === 'items' ? call('enableClosingConfirmation') : call('disableClosingConfirmation'); }
+  SCREENS[s]();
+}
+function setLang(l){ LANG = l; store.set('lang', l); haptic('sel'); go(current === 'home' ? 'home' : current); }
+
+/* ============ HOME ============ */
+function renderHome(){
+  const name = tgUser && tgUser.first_name;
+  $app.innerHTML = `
+  <div class="bar"><div class="logo">D</div><div class="ttl">DEADLOCK ARCADE</div>
+    <div class="seg"><button class="${LANG==='uk'?'on':''}" onclick="setLang('uk')">UA</button><button class="${LANG==='en'?'on':''}" onclick="setLang('en')">EN</button></div></div>
+  <div><span class="kicker"><i></i>${name ? 'Привіт, '+esc(name) : 'Українська спільнота Deadlock'}</span></div>
+  <h1>Міні-ігри <em>Deadlock</em> у Telegram</h1>
+  <p class="lead">Статистика героїв, здібності й предмети — перевір, наскільки добре знаєш гру.</p>
+  <div class="games">
+    ${GAMES.map(g => { const off = g.stats && statsState === 'fail';
+      return `<button class="game${off?' off':''}" onclick="go('${g.id}')">
+        <div class="art">${img(g.art()||'', g.t)}</div>
+        <div class="tx"><b>${g.t}</b><span>${g.d}</span>
+          ${off ? '<div class="rec" style="color:var(--bad)">Статистика недоступна</div>' : best(g.id) ? `<div class="rec">Рекорд: ${best(g.id)} ${g.unit}</div>` : ''}</div>
+        <div class="go">›</div></button>`; }).join('')}
+  </div>
+  <div style="margin-top:14px"><button class="btn ghost" onclick="go('lb')"><span>🏆 Мої рекорди</span></button></div>
+  <div class="foot">${HEROES.length} героїв · ${ITEMS.length} предметів · дані ${esc(D.updated||'')}<br>
+    Статистика: deadlock-api.com ${statsState==='ok'?'· 30 днів':statsState==='loading'?'· завантаження…':'· недоступна'}<br>Фанатський проєкт, не пов’язаний з Valve.</div>`;
+  preload(HEROES.slice(0,12).map(h=>h.card));
+}
+
+function noStats(title){
+  $app.innerHTML = bar(title) + `<div class="result"><div class="big" style="font-size:40px">Офлайн</div>
+    <p>Не вдалося завантажити статистику з deadlock-api.com. Перевір інтернет.</p></div>
+    <div class="dock"><button class="btn" onclick="retryStats('${current}')"><span>Спробувати ще</span></button></div>`;
+}
+async function retryStats(g){ $app.querySelector('.dock .btn').disabled = true; statsState = 'loading'; await loadStats(); go(statsState==='ok'? g : 'home'); }
+async function needStats(id, title){
+  if (statsState === 'ok') return true;
+  if (statsState === 'loading'){ $app.innerHTML = bar(title) + `<div class="result"><p>Завантажуємо статистику…</p></div>`;
+    while (statsState === 'loading') await new Promise(r=>setTimeout(r,150)); if (current !== id) return false; }
+  if (statsState !== 'ok'){ noStats(title); return false; } return true;
+}
+
+function result(id, title, score, note, extra){
+  const rec = saveBest(id, score); haptic(rec ? 'ok' : 'medium');
+  const g = GAMES.find(x=>x.id===id);
+  $app.innerHTML = bar(title) + `<div class="screen"><div class="result">
+      <div class="label">Результат</div><div class="big">${score}</div><p>${note}</p>
+      ${rec && score > 0 ? '<span class="badge">НОВИЙ РЕКОРД</span>' : `<p style="font-size:13px">Рекорд: ${best(id)} ${g.unit}</p>`}
+    </div>${extra||''}
+    <div class="dock">
+      <button class="btn" onclick="go('${id}')"><span>Ще раз ›</span></button>
+      <button class="btn ghost" id="shr"><span>Поділитися</span></button>
+    </div></div>`;
+  document.getElementById('shr').onclick = () => share(`Deadlock Arcade · ${title}: ${score} ${g.unit}. Спробуй побити!`);
+}
+
+/* ============ 1. HIGHER / LOWER ============ */
+function heroCard(s, stat, show, cls){ const h = HBY[s.id];
+  return `<div class="hc ${cls||''}"><div class="pic">${img(h.card, nm(h))}</div>
+    <div class="vl"><span class="${show?'':'q'}">${show ? stat.f(s[stat.k]) : '?'}</span></div>
+    <div class="nm"><b>${esc(nm(h))}</b><small>${esc(sub(h))}</small></div></div>`; }
+
+async function startHL(){
+  if (!await needStats('hl','Вище чи нижче')) return;
+  let streak = 0, left = pick(STATS), right, stat, busy = false;
+  const next = () => { stat = pick(STAT_DEFS); do { right = pick(STATS); } while (right.id === left.id || right[stat.k] === left[stat.k]);
+    preload([HBY[right.id].card]); busy = false; draw(); };
+  const draw = (reveal, ok) => {
+    $app.innerHTML = bar('Вище чи нижче', `Серія <b>${streak}</b>`) + `<div class="screen">
+      <div class="stat"><span class="label">Порівнюємо</span><b>${stat.n}</b></div>
+      <div class="duo">${heroCard(left, stat, true)}<div class="vs">VS</div>${heroCard(right, stat, reveal, reveal ? (ok?'ok':'bad') : '')}</div>
+      <p class="center muted" style="margin:14px 0 0;font-size:14px">У <b style="color:var(--text2)">${esc(nm(HBY[right.id]))}</b> цей показник…</p>
+      <div class="dock"><div class="row">
+        <button class="btn" onclick="hlGuess(1)" ${reveal?'disabled':''}><span>▲ Більше</span></button>
+        <button class="btn mint" onclick="hlGuess(-1)" ${reveal?'disabled':''}><span>▼ Менше</span></button></div></div></div>`;
+  };
+  window.hlGuess = dir => { if (busy) return; busy = true;
+    const a = left[stat.k], b = right[stat.k], ok = dir > 0 ? b > a : b < a;
+    haptic(ok ? 'ok' : 'bad'); draw(true, ok);
+    later(() => { if (ok){ streak++; left = right; next(); }
+      else result('hl', 'Вище чи нижче', streak, 'правильних поспіль'); }, ok ? 900 : 1500);
+  };
+  next();
+}
+
+/* ============ 2. STAT BLITZ ============ */
+async function startBlitz(){
+  if (!await needStats('blitz','Stat Blitz')) return;
+  const ROUNDS = 10, TIME = 5000; let round = 0, score = 0, correct = 0;
+  const makeRound = () => { const stat = pick(STAT_DEFS); let hs;
+    do { hs = shuffle(STATS).slice(0,4); } while (new Set(hs.map(h=>h[stat.k].toFixed(2))).size < 4);
+    return {stat, hs, top: hs.reduce((a,b)=>b[stat.k]>a[stat.k]?b:a)}; };
+  let nextR = makeRound();
+  const next = () => { clearTimers();
+    if (round >= ROUNDS) return result('blitz','Stat Blitz', score, `${correct} з ${ROUNDS} правильно`);
+    round++; const {stat, hs, top} = nextR; nextR = makeRound(); preload(nextR.hs.map(h=>HBY[h.id].card));
+    const t0 = performance.now(); let done = false;
+    $app.innerHTML = bar('Stat Blitz', `${round}/${ROUNDS} · <b>${score}</b>`) + `<div class="screen">
+      <div class="stat"><span class="label">Хто має найбільше?</span><b>${stat.n}</b></div>
+      <div class="timer" id="tm"><div id="tb"></div></div>
+      <div class="quad">${hs.map(s => `<div data-id="${s.id}">${heroCard(s, stat, false)}</div>`).join('')}</div></div>`;
+    const tb = document.getElementById('tb'), tm = document.getElementById('tm');
+    const finish = id => { if (done) return; done = true; clearTimers();
+      const ok = id === top.id;
+      if (ok){ correct++; score += 100 + Math.round(Math.max(0, TIME-(performance.now()-t0))/50); }
+      haptic(ok ? 'ok' : 'bad'); setChip(`${round}/${ROUNDS} · <b>${score}</b>`);
+      document.querySelectorAll('.quad>[data-id]').forEach(el => { const s = hs.find(x=>x.id==el.dataset.id);
+        el.innerHTML = heroCard(s, stat, true, s.id===top.id ? 'ok' : s.id===id ? 'bad' : ''); });
+      later(next, 1300);
+    };
+    document.querySelectorAll('.quad>[data-id]').forEach(el => el.onclick = () => finish(+el.dataset.id));
+    every(() => { const left = Math.max(0, TIME-(performance.now()-t0)); tb.style.width = (left/TIME*100)+'%';
+      tm.classList.toggle('low', left < 1500); if (!left) finish(null); }, 50);
+  };
+  next();
+}
+
+/* ============ 3. ABILITY QUIZ ============ */
+function startAbil(){
+  const pool = HEROES.flatMap(h => h.ab.map(a => ({a, h})));
+  let lives = 3, score = 0, recent = [], q = null, nq = null;
+  const make = () => { let x; do { x = pick(pool); } while (recent.includes(x.a.n)); recent = [...recent.slice(-25), x.a.n];
+    return {...x, opts: shuffle([x.h, ...shuffle(HEROES.filter(h=>h.id!==x.h.id)).slice(0,3)])}; };
+  const next = () => { q = nq || make(); nq = make(); preload([nq.a.img, ...nq.opts.map(h=>h.sm)]); let done = false;
+    $app.innerHTML = bar('Чия здібність?', `<span class="lives">${'♥'.repeat(lives)}<span style="color:var(--line2)">${'♥'.repeat(3-lives)}</span></span> · <b>${score}</b>`) +
+      `<div class="screen"><div class="abil"><div class="ic">${img(q.a.img, q.a.n)}</div><b>${esc(q.a.n)}</b></div>
+       <div class="opts">${q.opts.map(h => `<button class="op" data-id="${h.id}">${img(h.sm, nm(h))}<div><b>${esc(nm(h))}</b><small>${esc(sub(h))}</small></div></button>`).join('')}</div></div>`;
+    document.querySelectorAll('.op').forEach(el => el.onclick = () => { if (done) return; done = true;
+      const ok = +el.dataset.id === q.h.id; haptic(ok ? 'ok' : 'bad');
+      document.querySelectorAll('.op').forEach(o => { if (+o.dataset.id === q.h.id) o.classList.add('ok'); else if (o === el) o.classList.add('bad'); });
+      ok ? score++ : lives--;
+      later(() => lives <= 0 ? result('abil','Чия здібність?', score, 'правильних відповідей') : next(), ok ? 650 : 1400);
+    });
+  };
+  next();
+}
+
+/* ============ 4. CONNECTIONS (генератор з реальних даних) ============ */
+const GUN_UA = {'Spreadshot':'розкид (Spreadshot)','Pistol':'пістолет','Rapid Fire':'скорострільна','Burst Fire':'черги (Burst)','Projectile':'снаряди','Long Range':'далекобійна','Heavy Hitter':'важкі постріли','Shotgun':'дробовик'};
+const TYPE_UA = {mystic:'Містик',marksman:'Стрілець',brawler:'Бієць',assassin:'Асасин'};
+const KEYWORDS = [
+  [/\b(bomb|bombs|grenade|keg)\b/i, 'Є бомба, граната чи бочка'],
+  [/\b(slash|strike|slam|punch|kick|bashdown|uppercut|impact|combo|rake)\b/i, 'Удар у назві здібності'],
+  [/\b(dagger|daggers|knives|stake|card|needles)\b/i, 'Кидають ножі, кинджали, карти чи голки'],
+  [/\b(shot|crackshot|gutshot|barrage|salvo|bolt|beam|full auto|carbine)\b/i, 'Постріл, залп чи промінь у назві'],
+  [/\b(blood|bloodletting|bloodscent|life|leech|siphon|drain|essence|sanguine|bites)\b/i, 'Кров, життя чи висмоктування'],
+  [/\b(flight|flying|air)\b/i, 'Політ у назві здібності'],
+  [/\b(wall|shelter|stone|armor|cube|pestments|shield)\b/i, 'Захисна здібність: стіна, укриття, броня'],
+  [/\b(bola|snare|trap|thorns|hands|binding|lasso|web)\b/i, 'Ловлять: пастка, бола, ласо, путо'],
+  [/\b(turret|familiar|assistant|ava|owl|swarm|helpers|bookwyrm|chimera|scarabs|terrors|knight|bishop|queen|rook)\b/i, 'Кличуть помічника, тварину чи фігуру'],
+];
+function buildCats(){
+  const cats = [], add = (label, hs) => { if (hs.length >= 4) cats.push({label, set:new Set(hs.map(h=>h.id))}); };
+  for (const g in GUN_UA) add('Зброя: '+GUN_UA[g], HEROES.filter(h=>h.gun===g));
+  for (const t in TYPE_UA) add('Роль: '+TYPE_UA[t], HEROES.filter(h=>h.type===t));
+  for (const x of [1,3]) add(`Складність ${'★'.repeat(x)}${'☆'.repeat(4-x)}`, HEROES.filter(h=>h.cx===x));
+  KEYWORDS.forEach(([re,l]) => add(l, HEROES.filter(h => h.ab.some(a => re.test(a.n)))));
+  return cats;
+}
+const CATS = buildCats();
+function genPuzzle(){
+  for (let tries = 0; tries < 800; tries++){
+    const picked = shuffle(CATS).slice(0,4); const groups = [];
+    for (let i = 0; i < 4; i++){
+      const others = picked.filter((_,j)=>j!==i);
+      const cand = [...picked[i].set].filter(id => !others.some(o => o.set.has(id)) && !groups.some(g=>g.ids.includes(id)));
+      if (cand.length < 4) break;
+      groups.push({label:picked[i].label, ids:shuffle(cand).slice(0,4)});
+    }
+    if (groups.length === 4) return groups;
+  }
+  return null;
+}
+function startConn(){
+  const COLORS = ['#ff9b5f','#5ef0ae','#7fb2ff','#c99bff'];
+  const groups = genPuzzle(); if (!groups){ toast('Не вдалося згенерувати пазл'); return go('home'); }
+  groups.forEach((g,i) => g.color = COLORS[i]);
+  let tiles = shuffle(groups.flatMap(g=>g.ids)), sel = new Set(), solved = [], lives = 4, tried = new Set();
+  preload(tiles.map(id=>HBY[id].sm));
+  const solvedHTML = g => `<div class="solved" style="background:${g.color}"><b>${esc(g.label)}</b><div class="fc">${g.ids.map(id=>`<div>${img(HBY[id].sm, nm(HBY[id]))}<span>${esc(nm(HBY[id]))}</span></div>`).join('')}</div></div>`;
+  const draw = () => {
+    $app.innerHTML = bar('Connections', `Груп <b>${solved.length}</b>/4`) + `<div class="screen">
+      ${solved.map(solvedHTML).join('')}
+      <div class="cg" id="cg">${tiles.map(id => `<div class="ct${sel.has(id)?' sel':''}" data-id="${id}">${img(HBY[id].sm, nm(HBY[id]))}<span>${esc(nm(HBY[id]))}</span></div>`).join('')}</div>
+      <div class="dots">Помилки: ${[0,1,2,3].map(i=>`<i class="${i<lives?'':'off'}"></i>`).join('')}</div>
+      <div class="dock">
+        <div class="row"><button class="btn ghost" id="shuf"><span>Перемішати</span></button><button class="btn ghost" id="clr" ${sel.size?'':'disabled'}><span>Скинути</span></button></div>
+        <button class="btn" id="sub" ${sel.size===4?'':'disabled'} style="margin-top:10px"><span>Перевірити ${sel.size}/4</span></button>
+      </div></div>`;
+    document.querySelectorAll('.ct').forEach(el => el.onclick = () => { const id = +el.dataset.id;
+      if (sel.has(id)) sel.delete(id); else if (sel.size < 4) sel.add(id); else return haptic('bad');
+      haptic('sel'); el.classList.toggle('sel', sel.has(id));
+      document.getElementById('sub').disabled = sel.size !== 4; document.getElementById('sub').innerHTML = `<span>Перевірити ${sel.size}/4</span>`;
+      document.getElementById('clr').disabled = !sel.size; });
+    document.getElementById('shuf').onclick = () => { tiles = shuffle(tiles); haptic(); draw(); };
+    document.getElementById('clr').onclick = () => { sel.clear(); draw(); };
+    document.getElementById('sub').onclick = submit;
+  };
+  const submit = () => {
+    const key = [...sel].sort().join('|'); if (tried.has(key)) return toast('Цю комбінацію вже пробував'); tried.add(key);
+    const g = groups.find(g => !solved.includes(g) && g.ids.every(id => sel.has(id)));
+    if (g){ haptic('ok'); solved.push(g); tiles = tiles.filter(t => !sel.has(t)); sel.clear(); return solved.length === 4 ? finish(true) : draw(); }
+    const near = groups.some(g => !solved.includes(g) && g.ids.filter(id=>sel.has(id)).length === 3);
+    lives--; haptic('bad'); toast(near ? 'Майже! Один зайвий' : 'Не та група');
+    document.getElementById('cg').classList.add('shake');
+    later(() => lives <= 0 ? finish(false) : draw(), 450);
+  };
+  const finish = win => {
+    const wins = (store.get('conn_wins')||0) + (win?1:0); if (win) store.set('conn_wins', wins);
+    result('conn', 'Connections', wins, win ? `Розв’язано з ${4-lives} помилками · всього перемог` : 'Не цього разу · всього перемог',
+      `<div style="margin-top:14px">${groups.map(solvedHTML).join('')}</div>`);
+  };
+  draw();
+}
+
+/* ============ 5. ITEM SPEEDRUN ============ */
+function startItems(){
+  const TIME = 300, found = new Set(); let left = TIME, over = false, lastNew = null;
+  const byKey = new Map(ITEMS.map(i => [i.k, i]));
+  const CAT = {w:'Зброя', v:'Живучість', s:'Дух'};
+  const cnt = c => [ITEMS.filter(i=>i.c===c && found.has(i.k)).length, ITEMS.filter(i=>i.c===c).length];
+  const cats = () => ['w','v','s'].map(c => { const [a,b] = cnt(c); return `<div class="${c}"><span>${CAT[c]}</span><span>${a}/${b}</span></div>`; }).join('');
+  const tile = (i, miss) => `<div class="it ${i.c}${miss?' miss':''}${i.k===lastNew?' new':''}" title="${esc(i.n)}">${img(i.img, i.n)}</div>`;
+  const fmt = s => Math.floor(s/60)+':'+String(s%60).padStart(2,'0');
+  $app.innerHTML = bar('Item Speedrun', `⏱ <b id="tm">${fmt(left)}</b>`) + `<div class="screen">
+    <div class="sticky">
+      <input class="inp" id="iin" placeholder="Назва предмета англійською…" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="done">
+      <div class="cats" id="cats">${cats()}</div><div class="lastfound" id="lf">Знайдено 0 з ${ITEMS.length}</div>
+    </div>
+    <div class="ig" id="ig"></div>
+    <div class="dock"><button class="btn ghost" id="giveup"><span>Здатися</span></button></div></div>`;
+  const inp = document.getElementById('iin'), ig = document.getElementById('ig');
+  setTimeout(()=>inp.focus(), 250);
+  inp.addEventListener('input', () => { const hit = byKey.get(norm(inp.value));
+    if (!hit || found.has(hit.k)) return;
+    found.add(hit.k); lastNew = hit.k; inp.value = ''; haptic('light');
+    inp.classList.remove('flash'); void inp.offsetWidth; inp.classList.add('flash');
+    ig.insertAdjacentHTML('afterbegin', tile(hit));
+    document.getElementById('cats').innerHTML = cats();
+    document.getElementById('lf').textContent = `✓ ${hit.n} · ${found.size} з ${ITEMS.length}`;
+    if (found.size === ITEMS.length) end();
+  });
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter'){ inp.blur(); } });
+  const end = () => { if (over) return; over = true; clearTimers(); inp.blur(); lastNew = null;
+    const sect = c => `<div class="label secttl" style="color:var(--${c})">${CAT[c]} · ${cnt(c).join('/')}</div>
+      <div class="ig">${ITEMS.filter(i=>i.c===c).sort((a,b)=>a.t-b.t).map(i=>tile(i, !found.has(i.k))).join('')}</div>`;
+    result('items', 'Item Speedrun', found.size, `з ${ITEMS.length} предметів · ${fmt(TIME-left)}`,
+      `<p class="center muted" style="font-size:12.5px;margin:10px 0 0">Сірі — ті, що пропустив</p>${sect('w')}${sect('v')}${sect('s')}`);
+  };
+  document.getElementById('giveup').onclick = end;
+  every(() => { left--; const t = document.getElementById('tm'); if (t){ t.textContent = fmt(left); t.style.color = left <= 30 ? 'var(--bad)' : ''; }
+    if (left === 30) haptic('heavy'); if (left <= 0) end(); }, 1000);
+}
+
+/* ============ RECORDS ============ */
+function renderLB(){
+  $app.innerHTML = bar('Мої рекорди') + `<div class="screen">
+    ${GAMES.map(g => `<div class="lb"><div class="art">${img(g.art()||'', g.t)}</div><span>${g.t}</span><div><b>${best(g.id)}</b><small>${g.unit}</small></div></div>`).join('')}
+    <p class="center muted" style="font-size:12.5px">Рекорди зберігаються у твоєму Telegram і доступні на всіх пристроях.</p>
+    <div class="dock"><button class="btn" id="shr"><span>Поділитися рекордами</span></button></div></div>`;
+  document.getElementById('shr').onclick = () => share('Мої рекорди в Deadlock Arcade: ' + GAMES.map(g => `${g.t} — ${best(g.id)}`).join(', '));
+}
+
+/* ============ BOOT ============ */
+(async () => {
+  if (!HEROES.length){ $app.innerHTML = '<p class="center muted" style="margin-top:40vh">Не знайдено data.js</p>'; return; }
+  await syncCloud(); LANG = store.get('lang') || LANG;
+  go('home');
+  loadStats().then(() => { if (current === 'home') renderHome(); });
+})();
+</script>
+</body>
+</html>
